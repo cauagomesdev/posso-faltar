@@ -157,6 +157,7 @@ export function IconButton({
   background,
   accessibilityLabel,
   size = 40,
+  disabled,
 }: {
   icon: IconName;
   onPress: () => void;
@@ -164,12 +165,15 @@ export function IconButton({
   background?: string;
   accessibilityLabel: string;
   size?: number;
+  disabled?: boolean;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       hitSlop={8}
       onPress={() => {
         tapFeedback();
@@ -179,6 +183,7 @@ export function IconButton({
         styles.iconButton,
         { width: size, height: size, backgroundColor: background ?? theme.card },
         pressed && styles.pressed,
+        disabled && styles.disabled,
       ]}>
       <Icon name={icon} size={size * 0.45} color={color ?? theme.text} />
     </Pressable>

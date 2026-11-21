@@ -1,4 +1,4 @@
-import { addDays, toISODate } from './dates';
+import { addDays, parseISODate, semesterStart, toISODate } from './dates';
 import { newId } from './id';
 import type { AppData, Assessment, AttendanceRecord, ClassSlot, Subject } from './types';
 
@@ -10,8 +10,8 @@ interface SampleSpec {
   schedule: ClassSlot[];
   /** Quantos dias de aula o aluno faltou no exemplo. */
   missedMeetings: number;
-  passingGrade: number;
-  assessments: [name: string, weight: number, grade: number | null][];
+  /** Pontos tirados em N1 (até 4,5), N2 (até 4,5) e PPD (até 1). */
+  grades: [n1: number | null, n2: number | null, ppd: number | null];
 }
 
 const SPECS: SampleSpec[] = [
@@ -25,11 +25,7 @@ const SPECS: SampleSpec[] = [
       { weekday: 3, classes: 2 },
     ],
     missedMeetings: 2,
-    passingGrade: 6,
-    assessments: [
-      ['N1', 1, 8.5],
-      ['N2', 1, null],
-    ],
+    grades: [4, null, null],
   },
   {
     name: 'Banco de Dados',
@@ -41,11 +37,7 @@ const SPECS: SampleSpec[] = [
       { weekday: 4, classes: 2 },
     ],
     missedMeetings: 6,
-    passingGrade: 6,
-    assessments: [
-      ['N1', 1, 5],
-      ['N2', 1, null],
-    ],
+    grades: [2, null, 1],
   },
   {
     name: 'Cálculo II',
@@ -57,11 +49,7 @@ const SPECS: SampleSpec[] = [
       { weekday: 5, classes: 2 },
     ],
     missedMeetings: 7,
-    passingGrade: 6,
-    assessments: [
-      ['N1', 4, 3],
-      ['N2', 6, null],
-    ],
+    grades: [1, null, 0.5],
   },
   {
     name: 'Engenharia de Software',
@@ -70,11 +58,7 @@ const SPECS: SampleSpec[] = [
     totalClasses: 40,
     schedule: [{ weekday: 4, classes: 2 }],
     missedMeetings: 1,
-    passingGrade: 6,
-    assessments: [
-      ['N1', 1, 9],
-      ['N2', 1, 8],
-    ],
+    grades: [4, 3.5, 1],
   },
   {
     name: 'Inglês Técnico',
@@ -83,27 +67,35 @@ const SPECS: SampleSpec[] = [
     totalClasses: 40,
     schedule: [{ weekday: 5, classes: 2 }],
     missedMeetings: 3,
-    passingGrade: 6,
-    assessments: [
-      ['N1', 1, null],
-      ['N2', 1, null],
-    ],
+    grades: [null, null, null],
   },
 ];
 
-/** Dados de exemplo relativos à data de hoje (8 semanas de semestre já cursadas). */
+const PASSING_GRADE = 6.75;
+const ASSESSMENTS: [name: string, maxPoints: number][] = [
+  ['N1', 4.5],
+  ['N2', 4.5],
+  ['PPD', 1],
+];
+
+/**
+ * Dados de exemplo relativos à data de hoje: presenças desde o começo do
+ * semestre (ou das últimas 8 semanas, se o semestre acabou de começar).
+ */
 export function buildSampleData(today = new Date()): AppData {
   const subjects: Subject[] = [];
   const records: AttendanceRecord[] = [];
-  const start = addDays(today, -56);
+  const eightWeeksAgo = addDays(today, -56);
+  const semester = parseISODate(semesterStart(toISODate(today)));
+  const start = semester < eightWeeksAgo ? semester : eightWeeksAgo;
 
   SPECS.forEach((spec, index) => {
     const id = newId();
-    const assessments: Assessment[] = spec.assessments.map(([name, weight, grade]) => ({
+    const assessments: Assessment[] = ASSESSMENTS.map(([name, maxPoints], i) => ({
       id: newId(),
       name,
-      weight,
-      grade,
+      maxPoints,
+      grade: spec.grades[i],
     }));
     subjects.push({
       id,
@@ -113,8 +105,7 @@ export function buildSampleData(today = new Date()): AppData {
       totalClasses: spec.totalClasses,
       minAttendance: 75,
       schedule: spec.schedule,
-      passingGrade: spec.passingGrade,
-      maxGrade: 10,
+      passingGrade: PASSING_GRADE,
       assessments,
       createdAt: Date.now() + index,
     });
@@ -141,5 +132,5 @@ export function buildSampleData(today = new Date()): AppData {
     });
   });
 
-  return { version: 1, subjects, records };
+  return { version: 2, subjects, records };
 }

@@ -151,52 +151,63 @@ export type GradeStatus = 'empty' | 'needs' | 'approved' | 'impossible' | 'faile
 
 export interface GradeSummary {
   status: GradeStatus;
-  /** Média ponderada só das avaliações que já têm nota. */
-  currentAverage: number | null;
-  /** Média final (só quando todas as notas foram lançadas). */
+  /** Pontos somados até agora (só avaliações com nota). */
+  points: number;
+  /** Soma do valor máximo de todas as avaliações. Ex.: 10 */
+  totalPoints: number;
+  /** Nota final (só quando todas as notas foram lançadas). */
   finalAverage: number | null;
-  /** Nota necessária em cada avaliação pendente. */
+  /** Pontos que ainda faltam, somando as avaliações pendentes. */
   needed: number | null;
+  /** Quanto tirar em cada pendente, proporcional ao valor de cada uma. */
+  neededEach: { name: string; needed: number; maxPoints: number }[];
   pendingNames: string[];
 }
 
+/** Arredonda para cima em centésimos, sem cair em erro de ponto flutuante. */
+const ceil2 = (v: number) => Math.ceil(v * 100 - 1e-6) / 100;
+/** Arredonda para cima em décimos (sugestão por avaliação, mais fácil de ler). */
+const ceil1 = (v: number) => Math.ceil(v * 10 - 1e-6) / 10;
+
+/** Pontos máximos do semestre (soma do valor de todas as avaliações). */
+export function totalPointsFor(subject: Pick<Subject, 'assessments'>) {
+  return subject.assessments.reduce((s, a) => s + Math.max(0, a.maxPoints), 0);
+}
+
 export function summarizeGrades(subject: Subject): GradeSummary {
-  const list = subject.assessments.filter((a) => a.weight > 0);
-  if (list.length === 0) {
-    return {
-      status: 'empty',
-      currentAverage: null,
-      finalAverage: null,
-      needed: null,
-      pendingNames: [],
-    };
-  }
-  const totalWeight = list.reduce((s, a) => s + a.weight, 0);
+  const list = subject.assessments.filter((a) => a.maxPoints > 0);
+  const totalPoints = list.reduce((s, a) => s + a.maxPoints, 0);
   const graded = list.filter((a) => a.grade !== null);
   const pending = list.filter((a) => a.grade === null);
-  const points = graded.reduce((s, a) => s + (a.grade ?? 0) * a.weight, 0);
-  const gradedWeight = graded.reduce((s, a) => s + a.weight, 0);
-  const pendingWeight = totalWeight - gradedWeight;
-  const currentAverage = gradedWeight > 0 ? points / gradedWeight : null;
+  const points = graded.reduce((s, a) => s + Math.min(a.grade ?? 0, a.maxPoints), 0);
+  const base = { points, totalPoints, neededEach: [], pendingNames: [] };
+
+  if (list.length === 0) {
+    return { ...base, status: 'empty', finalAverage: null, needed: null };
+  }
 
   if (pending.length === 0) {
-    const finalAverage = points / totalWeight;
     return {
-      status: finalAverage + 1e-9 >= subject.passingGrade ? 'approved' : 'failed',
-      currentAverage,
-      finalAverage,
+      ...base,
+      status: points + 1e-9 >= subject.passingGrade ? 'approved' : 'failed',
+      finalAverage: points,
       needed: null,
-      pendingNames: [],
     };
   }
 
-  const rawNeeded = (subject.passingGrade * totalWeight - points) / pendingWeight;
-  const needed = Math.ceil(rawNeeded * 10 - 1e-9) / 10;
+  const pendingMax = pending.reduce((s, a) => s + a.maxPoints, 0);
+  const needed = ceil2(subject.passingGrade - points);
+  const ratio = Math.max(0, needed) / pendingMax;
   return {
-    status: needed <= 0 ? 'approved' : needed > subject.maxGrade ? 'impossible' : 'needs',
-    currentAverage,
+    ...base,
+    status: needed <= 0 ? 'approved' : needed > pendingMax + 1e-9 ? 'impossible' : 'needs',
     finalAverage: null,
     needed: Math.max(0, needed),
+    neededEach: pending.map((a) => ({
+      name: a.name,
+      maxPoints: a.maxPoints,
+      needed: Math.min(a.maxPoints, ceil1(a.maxPoints * ratio)),
+    })),
     pendingNames: pending.map((a) => a.name),
   };
 }
@@ -205,9 +216,11 @@ export function summarizeGrades(subject: Subject): GradeSummary {
 /* Formatação                                                          */
 /* ------------------------------------------------------------------ */
 
-/** 8.5 → "8,5" | 7 → "7,0" */
+/** 8.5 → "8,5" | 7 → "7,0" | 6.75 → "6,75" */
 export function formatGrade(value: number): string {
-  return value.toFixed(1).replace('.', ',');
+  const rounded = Math.round(value * 100) / 100;
+  const decimals = Math.abs(rounded * 10 - Math.round(rounded * 10)) < 1e-6 ? 1 : 2;
+  return rounded.toFixed(decimals).replace('.', ',');
 }
 
 /** 91.666 → "92%" */

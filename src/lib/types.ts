@@ -7,11 +7,16 @@ export interface ClassSlot {
   classes: number;
 }
 
-/** Uma avaliação da matéria (N1, N2, trabalho...). */
+/**
+ * Uma avaliação da matéria (N1, N2, PPD...). A nota final é a SOMA dos pontos
+ * de todas as avaliações. Ex.: N1 vale até 4,5 + N2 até 4,5 + PPD até 1 = 10.
+ */
 export interface Assessment {
   id: string;
   name: string;
-  weight: number;
+  /** Quantos pontos a avaliação vale no máximo. Ex.: 4.5 */
+  maxPoints: number;
+  /** Pontos tirados (0 a maxPoints), ou null se ainda não saiu. */
   grade: number | null;
 }
 
@@ -25,10 +30,8 @@ export interface Subject {
   /** Frequência mínima exigida, em %. Ex.: 75 */
   minAttendance: number;
   schedule: ClassSlot[];
-  /** Média mínima para aprovação. Ex.: 6 */
+  /** Soma mínima de pontos para aprovação. Ex.: 6.75 */
   passingGrade: number;
-  /** Maior nota possível em cada avaliação. Ex.: 10 */
-  maxGrade: number;
   assessments: Assessment[];
   createdAt: number;
 }
@@ -46,7 +49,7 @@ export interface AttendanceRecord {
 }
 
 export interface AppData {
-  version: 1;
+  version: 2;
   subjects: Subject[];
   records: AttendanceRecord[];
 }

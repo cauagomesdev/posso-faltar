@@ -9,12 +9,15 @@ import type { Subject } from '@/lib/types';
 export function gradeMessage(subject: Subject, g: GradeSummary) {
   const pending = joinNames(g.pendingNames);
   const many = g.pendingNames.length > 1;
+  const passing = formatGrade(subject.passingGrade);
+  const needed = g.needed ?? 0;
+  const pendingMax = g.neededEach.reduce((s, x) => s + x.maxPoints, 0);
   switch (g.status) {
     case 'empty':
       return {
         emoji: '📝',
         title: 'Sem avaliações',
-        text: 'Edite a matéria para cadastrar as avaliações (N1, N2...).',
+        text: 'Edite a matéria para cadastrar as avaliações (N1, N2, PPD...).',
         tone: 'neutral' as const,
       };
     case 'approved':
@@ -22,36 +25,40 @@ export function gradeMessage(subject: Subject, g: GradeSummary) {
         ? {
             emoji: '🎉',
             title: `Aprovado com ${formatGrade(g.finalAverage)}`,
-            text: `A média para passar era ${formatGrade(subject.passingGrade)}.`,
+            text: `A média para passar era ${passing}.`,
             tone: 'success' as const,
           }
         : {
             emoji: '🎉',
             title: 'Já passou!',
-            text: `Mesmo tirando 0 ${many ? 'em' : 'na'} ${pending}, você fica com a média.`,
+            text: `Você já tem ${formatGrade(g.points)} pontos. Mesmo tirando 0 em ${pending}, fica com ${passing}.`,
             tone: 'success' as const,
           };
-    case 'needs':
+    case 'needs': {
+      const hard = pendingMax > 0 && needed / pendingMax >= 0.8;
       return {
-        emoji: (g.needed ?? 0) >= 8 ? '😬' : '💪',
-        title: `Precisa de ${formatGrade(g.needed ?? 0)} ${many ? 'em' : 'na'} ${pending}`,
+        emoji: hard ? '😬' : '💪',
+        title: many
+          ? `Precisa de ${formatGrade(needed)} pontos em ${pending}`
+          : `Precisa de ${formatGrade(needed)} em ${pending}`,
         text: many
-          ? `Tirando ${formatGrade(g.needed ?? 0)} em cada uma, você fecha com ${formatGrade(subject.passingGrade)}.`
-          : `Com isso você fecha com média ${formatGrade(subject.passingGrade)}.`,
-        tone: (g.needed ?? 0) >= 8 ? ('warning' as const) : ('primary' as const),
+          ? `Ex.: ${g.neededEach.map((x) => `${formatGrade(x.needed)} em ${x.name}`).join(' e ')}. Você tem ${formatGrade(g.points)} e precisa de ${passing}.`
+          : `Vale até ${formatGrade(pendingMax)}. Você tem ${formatGrade(g.points)} e precisa de ${passing}.`,
+        tone: hard ? ('warning' as const) : ('primary' as const),
       };
+    }
     case 'impossible':
       return {
         emoji: '😱',
-        title: `Precisaria de ${formatGrade(g.needed ?? 0)}`,
-        text: `Não dá para chegar na média ${formatGrade(subject.passingGrade)} só com ${pending}. Hora de falar com o professor sobre recuperação.`,
+        title: `Precisaria de ${formatGrade(needed)} pontos`,
+        text: `${many ? `${pending} valem` : `${pending} vale`} só ${formatGrade(pendingMax)}, não dá para chegar em ${passing}. Hora de falar com o professor sobre recuperação.`,
         tone: 'danger' as const,
       };
     case 'failed':
       return {
         emoji: '📉',
-        title: `Média final ${formatGrade(g.finalAverage ?? 0)}`,
-        text: `Ficou abaixo da média ${formatGrade(subject.passingGrade)}. Confira se tem exame/recuperação.`,
+        title: `Nota final ${formatGrade(g.finalAverage ?? 0)}`,
+        text: `Ficou abaixo da média ${passing}. Confira se tem exame/recuperação.`,
         tone: 'danger' as const,
       };
   }

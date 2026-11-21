@@ -1,28 +1,32 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { NavHeader } from '@/components/nav-header';
 import { Screen } from '@/components/screen';
-import { AppText, Button, Card, Stepper, useLevelMeta } from '@/components/ui';
+import { AppText, Button, Card, IconButton, Stepper, useLevelMeta } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { classesOn, classesPerMeeting, plural, summarizeAttendance } from '@/lib/calc';
 import {
   WEEKDAY_SHORT,
+  WEEK_ORDER,
   addDays,
+  addMonths,
+  monthGrid,
+  monthKey,
+  monthLabel,
   parseISODate,
   relativeDayLabel,
+  semesterStart,
   toISODate,
   todayISO,
   weekdayOf,
 } from '@/lib/dates';
 import { successFeedback, tapFeedback, warningFeedback } from '@/lib/feedback';
 import { useStore, useSubject } from '@/lib/store';
-import type { AttendanceStatus } from '@/lib/types';
-
-const DAYS_BACK = 21;
+import type { AttendanceRecord, AttendanceStatus, Subject } from '@/lib/types';
 
 export default function RegisterScreen() {
   const params = useLocalSearchParams<{ subjectId: string; status?: AttendanceStatus }>();
@@ -31,16 +35,12 @@ export default function RegisterScreen() {
   const theme = useTheme();
   const levelMeta = useLevelMeta();
   const today = todayISO();
-
-  // Últimos dias, do mais recente para o mais antigo.
-  const days = Array.from({ length: DAYS_BACK }, (_, i) =>
-    toISODate(addDays(parseISODate(today), -i)),
-  );
-  const firstClassDay =
-    subject && days.find((d) => classesOn(subject, weekdayOf(d)) > 0 && d <= today);
+  const start = semesterStart(today);
+  const firstClassDay = subject ? lastClassDay(subject, today, start) : undefined;
 
   const [status, setStatus] = useState<AttendanceStatus>(params.status ?? 'absent');
   const [date, setDate] = useState(firstClassDay ?? today);
+  const [month, setMonth] = useState(monthKey(firstClassDay ?? today));
   const [classes, setClasses] = useState(() =>
     subject ? classesOn(subject, weekdayOf(firstClassDay ?? today)) || classesPerMeeting(subject) : 2,
   );
@@ -111,58 +111,20 @@ export default function RegisterScreen() {
       <AppText variant="label" color="textSecondary" style={styles.label}>
         Quando?
       </AppText>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dates}>
-        {days.map((d) => {
-          const selected = d === date;
-          const hasClass = classesOn(subject, weekdayOf(d)) > 0;
-          const recorded = data.records.find((r) => r.subjectId === subject.id && r.date === d);
-          const dd = parseISODate(d);
-          return (
-            <Pressable
-              key={d}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() => {
-                tapFeedback();
-                pickDate(d);
-              }}
-              style={[
-                styles.dateItem,
-                {
-                  backgroundColor: selected ? accent : theme.card,
-                  borderColor: selected ? accent : theme.border,
-                  opacity: hasClass || selected ? 1 : 0.45,
-                },
-              ]}>
-              <Text style={[styles.dateWeekday, { color: selected ? '#fff' : theme.textSecondary }]}>
-                {d === today ? 'Hoje' : WEEKDAY_SHORT[dd.getDay()]}
-              </Text>
-              <Text style={[styles.dateDay, { color: selected ? '#fff' : theme.text }]}>
-                {dd.getDate()}
-              </Text>
-              <View
-                style={[
-                  styles.dateDot,
-                  {
-                    backgroundColor: recorded
-                      ? selected
-                        ? '#fff'
-                        : recorded.status === 'absent'
-                          ? theme.danger
-                          : theme.success
-                      : 'transparent',
-                  },
-                ]}
-              />
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <MonthCalendar
+        subject={subject}
+        records={data.records}
+        month={month}
+        onMonthChange={setMonth}
+        selected={date}
+        onSelect={pickDate}
+        minDate={start}
+        maxDate={today}
+        accent={accent}
+      />
       <AppText variant="caption" color="textMuted" style={styles.legend}>
-        Dias apagados não têm aula dessa matéria · bolinha = já registrado
+        Dias apagados não têm aula dessa matéria · bolinha = já registrado. Dá para voltar até o
+        começo do semestre.
       </AppText>
 
       {/* Quantidade */}
@@ -206,6 +168,135 @@ export default function RegisterScreen() {
   );
 }
 
+/** Último dia com aula dessa matéria, de hoje para trás, até o começo do semestre. */
+function lastClassDay(subject: Subject, today: string, start: string) {
+  for (let d = today; d >= start; d = toISODate(addDays(parseISODate(d), -1))) {
+    if (classesOn(subject, weekdayOf(d)) > 0) return d;
+  }
+  return undefined;
+}
+
+/** Calendário de um mês (segunda a domingo) para escolher o dia do registro. */
+function MonthCalendar({
+  subject,
+  records,
+  month,
+  onMonthChange,
+  selected,
+  onSelect,
+  minDate,
+  maxDate,
+  accent,
+}: {
+  subject: Subject;
+  records: AttendanceRecord[];
+  month: string;
+  onMonthChange: (month: string) => void;
+  selected: string;
+  onSelect: (date: string) => void;
+  minDate: string;
+  maxDate: string;
+  accent: string;
+}) {
+  const theme = useTheme();
+  const canPrev = month > monthKey(minDate);
+  const canNext = month < monthKey(maxDate);
+  const byDate = new Map(
+    records.filter((r) => r.subjectId === subject.id).map((r) => [r.date, r]),
+  );
+  const cells = monthGrid(month);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+
+  const change = (delta: number) => onMonthChange(addMonths(month, delta));
+
+  return (
+    <Card style={styles.calendar}>
+      <View style={styles.calendarHeader}>
+        <IconButton
+          icon="chevronLeft"
+          size={34}
+          accessibilityLabel="Mês anterior"
+          disabled={!canPrev}
+          onPress={() => change(-1)}
+        />
+        <AppText variant="bodyStrong">
+          {monthLabel(month)}
+        </AppText>
+        <IconButton
+          icon="chevron"
+          size={34}
+          accessibilityLabel="Próximo mês"
+          disabled={!canNext}
+          onPress={() => change(1)}
+        />
+      </View>
+
+      <View style={styles.week}>
+        {WEEK_ORDER.map((wd) => (
+          <Text key={wd} style={[styles.weekLabel, { color: theme.textMuted }]}>
+            {WEEKDAY_SHORT[wd].charAt(0)}
+          </Text>
+        ))}
+      </View>
+
+      {weeks.map((week, i) => (
+        <View key={i} style={styles.week}>
+          {week.map((d, j) => {
+            if (!d) return <View key={j} style={styles.cell} />;
+            const enabled = d >= minDate && d <= maxDate;
+            const isSelected = d === selected;
+            const hasClass = classesOn(subject, weekdayOf(d)) > 0;
+            const recorded = byDate.get(d);
+            const dotColor = recorded
+              ? isSelected
+                ? '#fff'
+                : recorded.status === 'absent'
+                  ? theme.danger
+                  : theme.success
+              : 'transparent';
+            return (
+              <Pressable
+                key={d}
+                disabled={!enabled}
+                accessibilityRole="button"
+                accessibilityLabel={relativeDayLabel(d)}
+                accessibilityState={{ selected: isSelected, disabled: !enabled }}
+                onPress={() => {
+                  tapFeedback();
+                  onSelect(d);
+                }}
+                style={styles.cell}>
+                <View
+                  style={[
+                    styles.cellInner,
+                    {
+                      backgroundColor: isSelected
+                        ? accent
+                        : hasClass && enabled
+                          ? theme.cardAlt
+                          : 'transparent',
+                      borderColor: d === maxDate && !isSelected ? accent : 'transparent',
+                      opacity: !enabled ? 0.25 : hasClass || isSelected ? 1 : 0.45,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.cellText,
+                      { color: isSelected ? '#fff' : theme.text },
+                    ]}>
+                    {parseISODate(d).getDate()}
+                  </Text>
+                  <View style={[styles.dateDot, { backgroundColor: dotColor }]} />
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   segment: {
@@ -225,18 +316,25 @@ const styles = StyleSheet.create({
   },
   segmentText: { fontSize: 15, fontWeight: '800' },
   label: { marginTop: Spacing.six, marginBottom: Spacing.three, paddingHorizontal: Spacing.one },
-  dates: { gap: Spacing.two, paddingRight: Spacing.five },
-  dateItem: {
-    width: 56,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
+  calendar: { padding: Spacing.three, gap: 4 },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.two,
+  },
+  week: { flexDirection: 'row' },
+  weekLabel: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', paddingVertical: 4 },
+  cell: { flex: 1, padding: 2 },
+  cellInner: {
+    height: 44,
+    borderRadius: Radius.sm,
     borderWidth: 1.5,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
   },
-  dateWeekday: { fontSize: 11, fontWeight: '700' },
-  dateDay: { fontSize: 18, fontWeight: '800' },
-  dateDot: { width: 6, height: 6, borderRadius: 3, marginTop: 2 },
+  cellText: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  dateDot: { width: 5, height: 5, borderRadius: 3, marginTop: 2 },
   legend: { marginTop: Spacing.two, paddingHorizontal: Spacing.one },
   amountCard: {
     flexDirection: 'row',

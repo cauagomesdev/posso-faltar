@@ -36,8 +36,8 @@ Um app simples que responde à pergunta que todo estudante faz:
 | ☀️ **Hoje** | Veredito do dia com base em todas as matérias que você tem naquele dia. Dá para tocar em qualquer dia da semana e **simular** ("posso faltar na quinta?"). |
 | ✅ **Registro em 1 toque** | Botões **Fui** / **Faltei** em cada aula do dia. Tocar de novo desfaz. A aba mostra quantas aulas faltam marcar. |
 | 📚 **Matérias** | Resumo colorido do semestre (tranquilo, atenção, no limite, reprovado) e, por matéria, quantas faltas ainda pode ter, em **aulas e em dias**. |
-| 🔎 **Detalhe da matéria** | Faltas restantes, % de presença, histórico (com opção de apagar), registro em datas passadas. |
-| 🎓 **Notas** | Lance N1, N2 (com pesos) e veja **em tempo real** quanto precisa tirar para passar, ou se já passou. |
+| 🔎 **Detalhe da matéria** | Faltas restantes, % de presença, histórico (com opção de apagar), registro em qualquer dia desde o começo do semestre (calendário por mês). |
+| 🎓 **Notas** | Padrão da faculdade: N1 (até 4,5) + N2 (até 4,5) + PPD (até 1), média 6,75. Lance as notas e veja **em tempo real** quanto precisa tirar para passar, ou se já passou. |
 | 🎨 **UI/UX** | Modo claro/escuro automático, vibração nos toques (haptics), ícones nativos (SF Symbols no iPhone e Material no Android), dados salvos no aparelho. |
 | ✨ **Dados de exemplo** | Um toque carrega um semestre fictício para demonstrar o app. |
 
@@ -50,8 +50,9 @@ faltas permitidas = total de aulas × (100% − frequência mínima)
 restantes         = faltas permitidas − faltas registradas
 dias restantes    = restantes ÷ aulas por dia de aula
 
-nota necessária   = (média × soma dos pesos − pontos já feitos) ÷ pesos das provas que faltam
-                    ex.: N1 = 3 (peso 4), N2 peso 6, média 6 → (6×10 − 3×4) ÷ 6 = 8,0
+nota final        = soma dos pontos de todas as avaliações (N1 + N2 + PPD, até 10)
+nota necessária   = média − pontos já feitos
+                    ex.: N1 = 3,5, PPD = 1, média 6,75 → 6,75 − 4,5 = 2,25 na N2
 ```
 
 Situação de cada matéria:

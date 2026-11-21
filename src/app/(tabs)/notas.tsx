@@ -85,14 +85,14 @@ export default function GradesScreen() {
                     style={[styles.assessment, { backgroundColor: theme.cardAlt }]}>
                     <AppText variant="caption" color="textSecondary">
                       {a.name}
-                      {subject.assessments.some((x) => x.weight !== a.weight)
-                        ? ` (peso ${a.weight})`
-                        : ''}
                     </AppText>
                     <AppText
                       variant="bodyStrong"
                       color={a.grade === null ? 'textMuted' : 'text'}>
                       {a.grade === null ? '—' : formatGrade(a.grade)}
+                      <AppText variant="caption" color="textMuted">
+                        /{formatGrade(a.maxPoints)}
+                      </AppText>
                     </AppText>
                   </View>
                 ))}
@@ -105,7 +105,7 @@ export default function GradesScreen() {
       </View>
 
       <AppText variant="caption" color="textMuted" style={styles.footnote}>
-        Toque em uma matéria para lançar ou editar as notas.
+        A nota final é a soma das avaliações. Toque em uma matéria para lançar ou editar as notas.
       </AppText>
     </Screen>
   );

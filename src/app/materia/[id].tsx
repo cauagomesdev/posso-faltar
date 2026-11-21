@@ -301,26 +301,26 @@ function GradeRow({ subject, assessment }: { subject: Subject; assessment: Asses
   );
   const parsed = text.trim() === '' ? null : Number(text.replace(',', '.'));
   const invalid =
-    parsed !== null && (Number.isNaN(parsed) || parsed < 0 || parsed > subject.maxGrade);
+    parsed !== null && (Number.isNaN(parsed) || parsed < 0 || parsed > assessment.maxPoints);
 
   const onChange = (value: string) => {
     const clean = value.replace(/[^0-9.,]/g, '').slice(0, 5);
     setText(clean);
     if (clean.trim() === '') return setGrade(subject.id, assessment.id, null);
     const n = Number(clean.replace(',', '.'));
-    if (!Number.isNaN(n) && n >= 0 && n <= subject.maxGrade) {
+    if (!Number.isNaN(n) && n >= 0 && n <= assessment.maxPoints) {
       setGrade(subject.id, assessment.id, n);
     }
   };
-
-  const showWeight = subject.assessments.some((a) => a.weight !== assessment.weight);
 
   return (
     <View style={styles.gradeRow}>
       <View style={styles.flex}>
         <AppText variant="bodyStrong">{assessment.name}</AppText>
-        <AppText variant="caption" color="textSecondary">
-          {showWeight ? `Peso ${assessment.weight}` : `Nota de 0 a ${subject.maxGrade}`}
+        <AppText variant="caption" color={invalid ? 'danger' : 'textSecondary'}>
+          {invalid
+            ? `A nota vai até ${formatGrade(assessment.maxPoints)}`
+            : `Vale até ${formatGrade(assessment.maxPoints)}`}
         </AppText>
       </View>
       <TextInput

@@ -17,6 +17,7 @@ const ICONS = {
   close: { ios: 'xmark', android: 'close', web: 'close' },
   back: { ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' },
   chevron: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
+  chevronLeft: { ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' },
   edit: { ios: 'pencil', android: 'edit', web: 'edit' },
   trash: { ios: 'trash', android: 'delete', web: 'delete' },
   calendar: { ios: 'calendar', android: 'calendar_month', web: 'calendar_month' },

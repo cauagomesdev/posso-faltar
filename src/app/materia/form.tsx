@@ -8,7 +8,7 @@ import { Screen } from '@/components/screen';
 import { AppText, Button, Card, Chip, IconButton, Stepper } from '@/components/ui';
 import { Radius, Spacing, SubjectColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatGrade, maxAbsencesFor, plural } from '@/lib/calc';
+import { formatGrade, maxAbsencesFor, plural, totalPointsFor } from '@/lib/calc';
 import { WEEKDAY_LONG, WEEKDAY_SHORT, WEEK_ORDER } from '@/lib/dates';
 import { successFeedback, warningFeedback } from '@/lib/feedback';
 import { newId } from '@/lib/id';
@@ -16,6 +16,14 @@ import { useStore, useSubject } from '@/lib/store';
 import type { Assessment, SubjectInput, Weekday } from '@/lib/types';
 
 const TOTAL_SUGGESTIONS = [40, 60, 80, 120];
+
+/** Padrão da faculdade: N1 (4,5) + N2 (4,5) + PPD (1) = 10, média 6,75. */
+const DEFAULT_PASSING_GRADE = 6.75;
+const defaultAssessments = (): Assessment[] => [
+  { id: newId(), name: 'N1', maxPoints: 4.5, grade: null },
+  { id: newId(), name: 'N2', maxPoints: 4.5, grade: null },
+  { id: newId(), name: 'PPD', maxPoints: 1, grade: null },
+];
 
 export default function SubjectFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -34,18 +42,18 @@ export default function SubjectFormScreen() {
   );
   const [totalText, setTotalText] = useState(String(existing?.totalClasses ?? 80));
   const [minAttendance, setMinAttendance] = useState(existing?.minAttendance ?? 75);
-  const [passingGrade, setPassingGrade] = useState(existing?.passingGrade ?? 6);
+  const [passingGrade, setPassingGrade] = useState(
+    existing?.passingGrade ?? DEFAULT_PASSING_GRADE,
+  );
   const [assessments, setAssessments] = useState<Assessment[]>(
-    existing?.assessments ?? [
-      { id: newId(), name: 'N1', weight: 1, grade: null },
-      { id: newId(), name: 'N2', weight: 1, grade: null },
-    ],
+    existing?.assessments ?? defaultAssessments,
   );
   const [error, setError] = useState<string | null>(null);
 
   const totalClasses = Number.parseInt(totalText, 10) || 0;
   const maxAbsences = maxAbsencesFor({ totalClasses, minAttendance });
   const selectedDays = WEEK_ORDER.filter((wd) => schedule[wd] !== undefined);
+  const totalPoints = totalPointsFor({ assessments });
 
   const toggleDay = (wd: Weekday) =>
     setSchedule((prev) => {
@@ -76,10 +84,14 @@ export default function SubjectFormScreen() {
       minAttendance,
       schedule: selectedDays.map((wd) => ({ weekday: wd, classes: schedule[wd] ?? 1 })),
       passingGrade,
-      maxGrade: existing?.maxGrade ?? 10,
       assessments: assessments
         .filter((a) => a.name.trim())
-        .map((a) => ({ ...a, name: a.name.trim() })),
+        .map((a) => ({
+          ...a,
+          name: a.name.trim(),
+          // Se o valor da avaliação diminuiu, a nota lançada não pode passar dele.
+          grade: a.grade === null ? null : Math.min(a.grade, a.maxPoints),
+        })),
     };
     if (existing) updateSubject(existing.id, input);
     else addSubject(input);
@@ -219,7 +231,9 @@ export default function SubjectFormScreen() {
       </Field>
 
       {/* Notas */}
-      <Field label="Avaliações" hint="Use pesos diferentes se a N2 valer mais, por exemplo">
+      <Field
+        label="Avaliações"
+        hint="Quantos pontos cada uma vale. A nota final é a soma de todas.">
         <Card style={styles.daysCard}>
           {assessments.map((a) => (
             <View key={a.id} style={styles.assessmentRow}>
@@ -231,11 +245,12 @@ export default function SubjectFormScreen() {
               />
               <Stepper
                 compact
-                value={a.weight}
-                min={1}
+                value={a.maxPoints}
+                min={0.5}
                 max={10}
-                format={(v) => `peso ${v}`}
-                onChange={(v) => updateAssessment(a.id, { weight: v })}
+                step={0.5}
+                format={(v) => `até ${formatGrade(v)}`}
+                onChange={(v) => updateAssessment(a.id, { maxPoints: v })}
               />
               <IconButton
                 icon="trash"
@@ -247,6 +262,9 @@ export default function SubjectFormScreen() {
               />
             </View>
           ))}
+          <AppText variant="caption" color="textSecondary" style={styles.totalPoints}>
+            Total: {formatGrade(totalPoints)} pontos
+          </AppText>
           <Button
             title="Adicionar avaliação"
             icon="plus"
@@ -256,22 +274,27 @@ export default function SubjectFormScreen() {
             onPress={() =>
               setAssessments((list) => [
                 ...list,
-                { id: newId(), name: `N${list.length + 1}`, weight: 1, grade: null },
+                { id: newId(), name: `N${list.length + 1}`, maxPoints: 1, grade: null },
               ])
             }
           />
         </Card>
       </Field>
 
-      <Field label="Média para passar">
+      <Field label="Média para passar" hint="Soma mínima de pontos para ser aprovado">
         <Stepper
           value={passingGrade}
           min={0}
-          max={10}
-          step={0.5}
+          max={Math.max(totalPoints, 10)}
+          step={0.25}
           format={formatGrade}
           onChange={setPassingGrade}
         />
+        {passingGrade > totalPoints && (
+          <AppText variant="caption" style={{ color: theme.danger }}>
+            A média é maior que o total de pontos das avaliações ({formatGrade(totalPoints)}).
+          </AppText>
+        )}
       </Field>
 
       {error && (
@@ -368,6 +391,7 @@ const styles = StyleSheet.create({
   preview: { borderRadius: Radius.md, padding: Spacing.three },
   assessmentRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   assessmentName: { flex: 1, height: 44, minWidth: 0 },
+  totalPoints: { textAlign: 'right', paddingHorizontal: Spacing.one },
   error: {
     flexDirection: 'row',
     alignItems: 'center',

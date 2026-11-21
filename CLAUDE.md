@@ -44,7 +44,8 @@ src/components/icon.tsx      <Icon name=...>: mapa SF Symbols (iOS) + Material S
 src/components/screen.tsx    <Screen> (rolagem, safe area, espaço da tab bar) e <LargeTitle>
 src/lib/calc.ts              TODAS as regras de negócio (faltas, veredito do dia, notas, formatação)
 src/lib/store.tsx            Estado global (Context) + persistência no AsyncStorage
-src/lib/sample.ts            Dados de exemplo gerados a partir da data de hoje
+src/lib/sample.ts            Dados de exemplo gerados a partir da data de hoje (desde o começo do semestre)
+src/lib/migrate.ts           Migração dos dados salvos entre versões do formato
 src/lib/dates.ts             Datas em pt-BR (YYYY-MM-DD local, semana começa na segunda)
 src/lib/feedback.ts          Haptics + confirmAction (Alert no celular, window.confirm na web)
 ```
@@ -58,13 +59,20 @@ src/lib/feedback.ts          Haptics + confirmAction (Alert no celular, window.c
 - Veredito do dia (só considera aulas ainda não registradas naquele dia): `no` se faltar faz alguma
   matéria passar do limite; `careful` se alguma fica em `warning`/`danger`; senão `yes`.
   Sem aulas → `free`; tudo registrado → `done`.
-- Nota necessária = `(média × somaPesos − pontosFeitos) ÷ pesosPendentes`, arredondada **para cima**
-  com 1 casa. ≤ 0 → já aprovado; > nota máxima → impossível.
+- Notas no padrão da faculdade do autor: cada avaliação vale até `maxPoints` (N1 4,5 · N2 4,5 · PPD 1)
+  e a nota final é a **soma** dos pontos. Média padrão 6,75 (o stepper anda de 0,25).
+- Nota necessária = `média − pontosFeitos`, arredondada **para cima** em centésimos. ≤ 0 → já aprovado;
+  > soma do valor das pendentes → impossível. Com várias pendentes, sugere a divisão proporcional
+  ao valor de cada uma (arredondada para cima em décimos).
 - Um registro por matéria por dia (`setAttendance` substitui o anterior).
+- O registro aceita qualquer dia de `semesterStart()` (1º/ago no 2º semestre, 1º/fev no 1º) até hoje.
 
 ## Dados
 
-- Tipos em `src/lib/types.ts`. Salvo como JSON na chave `posso-faltar:data:v1`.
+- Tipos em `src/lib/types.ts`. Salvo como JSON na chave `posso-faltar:data:v1` (a chave não muda;
+  a versão do formato fica em `data.version`, hoje **2**).
+- `src/lib/migrate.ts` converte na leitura: v1 (média ponderada com `weight`/`maxGrade`) → v2
+  (soma de `maxPoints`), mantendo o mesmo resultado.
 - Se mudar o formato dos dados, **não quebre dados já salvos**: migre na leitura ou crie uma nova versão.
 - `buildSampleData()` cria 5 matérias com situações variadas (uma em cada nível), usado na demo/vídeo.
 

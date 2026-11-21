@@ -2,11 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { newId } from './id';
+import { migrateData } from './migrate';
 import { buildSampleData } from './sample';
 import type { AppData, AttendanceStatus, Subject, SubjectInput } from './types';
 
+/** A chave continua "v1"; a versão do formato fica em `data.version` e é migrada na leitura. */
 const STORAGE_KEY = 'posso-faltar:data:v1';
-const EMPTY: AppData = { version: 1, subjects: [], records: [] };
+const EMPTY: AppData = { version: 2, subjects: [], records: [] };
 
 interface Store {
   data: AppData;
@@ -29,15 +31,6 @@ interface Store {
 
 const StoreContext = createContext<Store | null>(null);
 
-function isAppData(value: unknown): value is AppData {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    Array.isArray((value as AppData).subjects) &&
-    Array.isArray((value as AppData).records)
-  );
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY);
   const [ready, setReady] = useState(false);
@@ -48,8 +41,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (!raw) return;
-        const parsed: unknown = JSON.parse(raw);
-        if (isAppData(parsed)) setData(parsed);
+        const migrated = migrateData(JSON.parse(raw));
+        if (migrated) setData(migrated);
       })
       .catch(() => {})
       .finally(() => setReady(true));
