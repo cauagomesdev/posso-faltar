@@ -99,5 +99,7 @@ src/lib/feedback.ts          Haptics + confirmAction (Alert no celular, window.c
 ## Estado do projeto
 
 - Funcionalidades do README implementadas e testadas na web (claro/escuro). Os bundles de Android
-  e iOS compilam. **Ainda falta testar num celular real pelo Expo Go** antes de gravar o vídeo.
+  e iOS compilam. **Ainda falta testar num celular real pelo Expo Go** antes da apresentação.
+- Vídeo de demonstração pronto em `docs/demo.mp4` (capa em `docs/demo-poster.jpg`), gravado da
+  versão web numa moldura de celular. Se mudar telas que aparecem nele, avise que o vídeo ficou desatualizado.
 - Ideias futuras (lembretes, widget, importar grade, premium) estão no README; não implemente sem pedido.

@@ -16,6 +16,16 @@
   <img src="docs/screenshots/notas.png" width="200" alt="Notas" />
 </p>
 
+## 🎬 Vídeo de demonstração
+
+<p align="center">
+  <a href="docs/demo.mp4">
+    <img src="docs/demo-poster.jpg" width="270" alt="Vídeo de demonstração do Posso Faltar? (29 s)" />
+  </a>
+</p>
+
+<p align="center"><a href="docs/demo.mp4"><b>▶️ Assistir ao vídeo (29 s)</b></a></p>
+
 ## O problema
 
 Todo semestre tem aluno que reprova **por falta**, e não por nota. A maioria das faculdades exige
@@ -134,19 +144,25 @@ src/
     └── dates.ts              # Datas em pt-BR
 ```
 
-## Roteiro do vídeo (≈ 30 s)
+## Sobre o vídeo
 
-| Tempo | O que mostrar | Fala sugerida |
+O [vídeo de demonstração](docs/demo.mp4) (29 s, vertical 1080×1920, sem áudio) mostra o app
+funcionando com os dados de exemplo, gravado da versão web numa moldura de celular:
+
+| Tempo | Cena | Narração sugerida (se quiser gravar voz) |
 |---|---|---|
-| 0–4 s | Abrir o app na tela **Hoje** com o "NÃO! Melhor ir" | "Quantas vezes você ficou na dúvida: posso faltar hoje?" |
-| 4–9 s | Tocar em **Qui** e **Dom** na faixa da semana: o veredito muda | "O Posso Faltar? responde na hora e ainda simula outros dias." |
-| 9–13 s | Tocar em **Fui** numa aula: o botão fica verde e o contador da aba diminui | "Registrar presença é um toque." |
-| 13–19 s | Aba **Matérias** → abrir uma matéria → mostrar "8 faltas restantes ≈ 4 dias" | "Cada matéria mostra quantas faltas ainda dá pra ter." |
-| 19–26 s | Digitar a nota da **N2**: o card muda de "Precisa de 7,0" para "Aprovado 🎉" | "E calcula quanto você precisa tirar pra passar." |
-| 26–30 s | Aba **Notas** e voltar para **Hoje** | "Posso Faltar?: nunca mais reprove por falta." |
+| 0–2 s | Abertura com o ícone e o nome do app | — |
+| 2–5 s | Tela **Hoje** responde "SIM, pode! 😎" | "Quantas vezes você ficou na dúvida: posso faltar hoje?" |
+| 5–12 s | Simulação: quarta dá **NÃO!**, quinta dá **Pode, mas…**, domingo dá **Dia livre** | "O Posso Faltar? responde na hora e ainda simula outros dias." |
+| 12–15 s | Toque em **Fui**: aula registrada | "Registrar presença é um toque." |
+| 15–19 s | Aba **Matérias** e detalhe: "8 faltas restantes ≈ 4 dias" | "Cada matéria mostra quantas faltas ainda dá pra ter." |
+| 19–23 s | Digitar a **N2**: de "Precisa de 3,75 em N2" para "Aprovado com 7,0 🎉" | "E calcula quanto você precisa tirar pra passar." |
+| 23–26 s | Aba **Notas**: N1 + N2 + PPD de todas as matérias | "Tudo num lugar só." |
+| 26–29 s | Encerramento | "Posso Faltar?: nunca mais reprove por falta." |
 
-> Dica: antes de gravar, toque em **Ver com dados de exemplo** na primeira tela (ou cadastre suas
-> matérias de verdade). Para recomeçar do zero, use **Apagar tudo e recomeçar** no fim da aba Matérias.
+> Para gravar a tela do seu próprio celular: toque em **Ver com dados de exemplo** na primeira tela
+> (ou cadastre suas matérias de verdade). Para recomeçar do zero, use **Apagar tudo e recomeçar** no
+> fim da aba Matérias.
 
 ## Próximos passos (visão de produto)
 
