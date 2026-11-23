@@ -78,6 +78,7 @@ eu for expandir ele, ai melhoro a questao das notas.
 ```
 
 **Resultado:**
+
 - O registro de faltas e presenças virou um calendário por mês, que vai do começo do semestre
   (1º de agosto) até hoje.
 - As notas passaram a ser uma soma: N1 vale até 4,5, N2 até 4,5 e PPD até 1, e a média para
@@ -92,6 +93,5 @@ eu for expandir ele, ai melhoro a questao das notas.
 
 ```
 gere um arquivo colocando os prompts usados na conversa para fazer esse app. Eu preciso entregar
-para o meu superior os prompts que usei para montar esse app, caso voce nn tenha acesso, pode
-simular um prompt
+para o meu superior os prompts que usei para montar esse app.
 ```
